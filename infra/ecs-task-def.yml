@@ -1,0 +1,168 @@
+Parameters:
+  ECSClusterName:
+    Type: String
+    Default: supercat-ecs-cluster
+  ECSServiceName:
+    Type: String
+    Default: supercat-task-def-service-oej3qpun
+  SecurityGroupIDs:
+    Type: CommaDelimitedList
+    Default: sg-084ed59b643d0e245
+  SubnetIDs:
+    Type: CommaDelimitedList
+    Default: subnet-0a8e827ff523dea48,subnet-0b2f059ad6c697093,subnet-099b3a822b01edeb1
+  VpcID:
+    Type: String
+    Default: vpc-092ca3e23ff8c4097
+  LoadBalancerName:
+    Type: String
+    Default: SuperCatALB
+Resources:
+  ECSTaskDefinitionTaskdefinition:
+    UpdateReplacePolicy: Retain
+    Type: AWS::ECS::TaskDefinition
+    DeletionPolicy: Retain
+    Properties:
+      InferenceAccelerators: []
+      Memory: '512'
+      PlacementConstraints: []
+      Cpu: '1024'
+      RequiresCompatibilities:
+        - EC2
+      NetworkMode: awsvpc
+      EnableFaultInjection: false
+      ExecutionRoleArn: arn:aws:iam::202853072354:role/ecsTaskExecutionRole
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: X86_64
+      Volumes: []
+      ContainerDefinitions:
+        - ExtraHosts: []
+          Secrets:
+            - ValueFrom: arn:aws:ssm:eu-central-1:202853072354:parameter/supercatdb/pw
+              Name: DB_PW
+            - ValueFrom: arn:aws:ssm:eu-central-1:202853072354:parameter/supercatdb/url
+              Name: DB_URL
+            - ValueFrom: arn:aws:ssm:eu-central-1:202853072354:parameter/supercatdb/user
+              Name: DB_USER
+          VolumesFrom: []
+          Cpu: 0
+          EntryPoint: []
+          DnsServers: []
+          Image: 202853072354.dkr.ecr.eu-central-1.amazonaws.com/supercat:latest
+          Essential: true
+          LogConfiguration:
+            SecretOptions: []
+            Options:
+              awslogs-group: /ecs/supercat-task-def
+              mode: non-blocking
+              max-buffer-size: 25m
+              awslogs-create-group: 'true'
+              awslogs-region: eu-central-1
+              awslogs-stream-prefix: ecs
+            LogDriver: awslogs
+          ResourceRequirements: []
+          EnvironmentFiles: []
+          Name: supercat
+          MountPoints: []
+          DependsOn: []
+          DockerLabels: {}
+          PortMappings:
+            - ContainerPort: 80
+              AppProtocol: http
+              Protocol: tcp
+              HostPort: 80
+              Name: supercat-80-tcp
+          DockerSecurityOptions: []
+          SystemControls: []
+          Command: []
+          DnsSearchDomains: []
+          Environment: []
+          Links: []
+          CredentialSpecs: []
+          Ulimits: []
+      Family: supercat-task-def
+      Tags: []
+  ECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: supercat-ecs-cluster
+      TaskDefinition: arn:aws:ecs:eu-central-1:202853072354:task-definition/supercat-task-def:6
+      ServiceName: supercat-task-def-service-oej3qpun
+      SchedulingStrategy: REPLICA
+      DesiredCount: 1
+      AvailabilityZoneRebalancing: ENABLED
+      LoadBalancers:
+        - ContainerName: supercat
+          ContainerPort: 80
+          LoadBalancerName: !Ref AWS::NoValue
+          TargetGroupArn: !Ref TargetGroup
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          SecurityGroups: !Ref SecurityGroupIDs
+          Subnets: !Ref SubnetIDs
+      DeploymentConfiguration:
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      DeploymentController:
+        Type: ECS
+      ServiceConnectConfiguration:
+        Enabled: false
+      PlacementStrategies:
+        - Field: attribute:ecs.availability-zone
+          Type: spread
+        - Field: instanceId
+          Type: spread
+      PlacementConstraints: []
+      Tags: []
+      EnableECSManagedTags: true
+    DependsOn:
+      - Listener
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Type: application
+      Name: SuperCatALB
+      SecurityGroups: !Ref SecurityGroupIDs
+      Subnets: !Ref SubnetIDs
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckPath: /
+      Name: tg-supercat
+      Port: 80
+      Protocol: HTTP
+      TargetType: ip
+      HealthCheckProtocol: HTTP
+      VpcId: !Ref VpcID
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: '300'
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+Outputs:
+  ClusterName:
+    Description: The cluster used to create the service.
+    Value: !Ref ECSClusterName
+  ECSService:
+    Description: The created service.
+    Value: !Ref ECSService
+  LoadBalancer:
+    Description: The created load balancer.
+    Value: !Ref LoadBalancer
+  Listener:
+    Description: The created listener.
+    Value: !Ref Listener
+  TargetGroup:
+    Description: The created target group.
+    Value: !Ref TargetGroup
