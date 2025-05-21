@@ -2,7 +2,7 @@
 
 Optimy DevOps Engineer Assessment.
 
-The app runs in a free-tier AWS account, at http://supercatalb-1209827839.eu-central-1.elb.amazonaws.com/.
+The app runs in a free-tier AWS account, at https://supercatalb-1209827839.eu-central-1.elb.amazonaws.com/.
 
 ## run Docker container locally
 
@@ -39,3 +39,11 @@ ssh -i supercat-keypair.pem -L 3306:sqlsupercatdemodbinstance-eu-central-1.c7e44
 ```
 
 Now the localhost:3306 connection can be used from MySQL Workbench and also to test locally the PHP connection to the RDS DB instance.
+
+## configuration and secrets values
+
+DB connection parameters are placed in the AWS SSM Parameter Store and injected as environment variables in the ECS task definition.
+
+## deployment of Docker container
+
+An ECS service is used to deploy the Docker container.
