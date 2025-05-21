@@ -2,7 +2,7 @@
 
 Optimy DevOps Engineer Assessment.
 
-The app runs in a free-tier AWS account, at https://supercatalb-1209827839.eu-central-1.elb.amazonaws.com/.
+The app runs in a free-tier AWS account, at http://supercatalb-1209827839.eu-central-1.elb.amazonaws.com/.
 
 ## run Docker container locally
 
